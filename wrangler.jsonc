@@ -1,0 +1,1 @@
+{"ai":{"binding":"AI"},"assets":{"binding":"ASSETS","directory":"./public","run_worker_first":["/api/*"]},"compatibility_date":"2025-10-01","main":"src/worker.js","name":"coloring-book-studio","observability":{"enabled":true}}

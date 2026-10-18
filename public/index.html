@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>استوديو كتاب التلوين</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lalezar&family=Readex+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <h1>استوديو كتاب التلوين</h1>
+  <p class="tagline">غلاف ملوّن + صفحات تلوين بالأبيض والأسود، جاهزة للطباعة</p>
+</header>
+
+<main>
+  <!-- Step indicators -->
+  <ol class="steps" aria-label="خطوات العمل">
+    <li class="step-ind" data-step="1"><span class="step-num" id="num-1">١</span><span>الفكرة</span></li>
+    <li class="step-ind" data-step="2"><span class="step-num" id="num-2">٢</span><span>الخطة والتوليد</span></li>
+    <li class="step-ind" data-step="3"><span class="step-num" id="num-3">٣</span><span>التصدير</span></li>
+  </ol>
+
+  <!-- ============ STEP 1 : IDEA ============ -->
+  <section class="sheet" id="sheet-1" aria-labelledby="h-step1">
+    <h2 id="h-step1">١ — الفكرة</h2>
+    <label for="theme">موضوع الكتاب</label>
+    <textarea id="theme" rows="3" placeholder="مثال: مخبز دافئ في قرية صغيرة…">مخبز دافئ في قرية صغيرة</textarea>
+
+    <fieldset>
+      <legend>الجمهور</legend>
+      <label class="radio"><input type="radio" name="audience" value="kids"> أطفال</label>
+      <label class="radio"><input type="radio" name="audience" value="adults" checked> كبار</label>
+    </fieldset>
+
+    <label for="count">عدد الصفحات (حتى ٣٠)</label>
+    <input id="count" type="number" min="1" max="30" value="10">
+
+    <label for="detail">مستوى التفاصيل</label>
+    <select id="detail">
+      <option value="simple">بسيط</option>
+      <option value="standard" selected>متوسط</option>
+      <option value="rich">غني بالتفاصيل</option>
+    </select>
+
+    <label class="check"><input type="checkbox" id="allowText"> السماح بنص داخل الصور (لافتات)</label>
+
+    <label for="model">نموذج توليد الصور</label>
+    <select id="model"></select>
+    <p class="hint" id="model-hint"></p>
+
+    <div id="password-wrap" hidden>
+      <label for="password">كلمة مرور التطبيق</label>
+      <input id="password" type="password" autocomplete="current-password" placeholder="••••••••">
+    </div>
+
+    <button id="plan-btn" class="primary">إنشاء الخطة ✦</button>
+    <p class="error" id="plan-error" role="alert" hidden></p>
+  </section>
+
+  <!-- ============ STEP 2 : PLAN + GENERATION ============ -->
+  <section class="sheet" id="sheet-2" aria-labelledby="h-step2" hidden>
+    <h2 id="h-step2">٢ — الخطة والتوليد</h2>
+
+    <label for="book-title">عنوان الكتاب</label>
+    <input id="book-title" type="text">
+    <label for="book-subtitle">العنوان الفرعي</label>
+    <input id="book-subtitle" type="text">
+
+    <label for="palette">لوحة ألوان الغلاف</label>
+    <select id="palette"></select>
+
+    <div class="usage" aria-live="polite">
+      <div class="usage-row"><span>الاستهلاك التقديري اليوم</span><span id="usage-text">٠ من ١٠٬٠٠٠ خلية عصبية</span></div>
+      <div class="usage-bar"><div id="usage-fill"></div></div>
+    </div>
+
+    <div class="actions">
+      <button id="generate-all" class="primary">توليد كل الصفحات</button>
+      <button id="generate-cover">توليد الغلاف</button>
+      <button id="new-project" class="ghost">مشروع جديد</button>
+    </div>
+
+    <div id="quota-box" class="quota" role="alert" hidden>
+      <p id="quota-text"></p>
+      <button id="resume-btn" class="primary">استئناف الصفحات المتبقية</button>
+    </div>
+    <p class="error" id="gen-error" role="alert" hidden></p>
+
+    <h3>الغلاف</h3>
+    <div class="cover-preview">
+      <img id="cover-img" alt="معاينة الغلاف" hidden>
+      <p id="cover-empty">لم يُولَّد الغلاف بعد.</p>
+    </div>
+
+    <h3>الصفحات</h3>
+    <div id="pages"></div>
+
+    <details class="tune">
+      <summary>إعدادات المعالجة (تُعاد من الصور الخام دون استدعاء جديد)</summary>
+      <label for="thickness">سُمك الخط <span id="thickness-val">١</span></label>
+      <input id="thickness" type="range" min="-3" max="3" step="1" value="1">
+      <label for="threshold">العتبة <span id="threshold-val">٠</span></label>
+      <input id="threshold" type="range" min="-30" max="30" step="1" value="0">
+      <label for="despeckle">إزالة النقاط الصغيرة <span id="despeckle-val">٨</span></label>
+      <input id="despeckle" type="range" min="0" max="64" step="1" value="8">
+    </details>
+  </section>
+
+  <!-- ============ STEP 3 : EXPORT ============ -->
+  <section class="sheet" id="sheet-3" aria-labelledby="h-step3" hidden>
+    <h2 id="h-step3">٣ — التصدير</h2>
+    <label class="check"><input type="checkbox" id="blank-backs"> إضافة صفحة ظهر فارغة بعد كل صفحة</label>
+    <button id="export-btn" class="primary">تصدير PDF للطباعة</button>
+    <p id="export-status" role="status"></p>
+    <p class="hint">صفحات مربعة ٨٫٥ بوصة بدقة ٣٠٠ نقطة/بوصة. الغلاف JPEG ملوّن، وصفحات التلوين بتدرّج ثنائي (أسود/أبيض) مضغوطة.</p>
+  </section>
+</main>
+
+<dialog id="viewer" aria-label="عارض الصورة">
+  <img id="viewer-img" alt="صورة بحجم كامل">
+  <button id="viewer-close" class="primary">إغلاق</button>
+</dialog>
+
+<footer class="foot">
+  <p>يعمل بالكامل على الطبقة المجانية من Cloudflare (Workers AI) — الحصة اليومية ١٠٬٠٠٠ خلية عصبية وتُصفَّر عند ٠٠:٠٠ UTC.</p>
+</footer>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
