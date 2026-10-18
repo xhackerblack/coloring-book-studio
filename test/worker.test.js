@@ -71,7 +71,7 @@ test("neuron cost and free images/day per model", () => {
   assert.equal(freePerDay(byId["@cf/black-forest-labs/flux-2-dev"]), 3);
   assert.equal(freePerDay(byId["@cf/leonardo/phoenix-1.0"]), 4);
   assert.equal(freePerDay(byId["@cf/leonardo/lucid-origin"]), 3);
-  assert.ok(PLAN_NEURONS_APPROX > 100 && PLAN_NEURONS_APPROX < 250);
+  assert.ok(PLAN_NEURONS_APPROX > 40 && PLAN_NEURONS_APPROX < 100);
 });
 test("multipart input carries a multipart content-type; prompt-only input drops optionals", () => {
   const klein = getModel("@cf/black-forest-labs/flux-2-klein-4b");
@@ -147,6 +147,19 @@ test("other upstream failures map to 502 with a detail message", async () => {
   const data = await res.json();
   assert.equal(data.code, "upstream");
   assert.match(data.detail, /model exploded/);
+});
+test("plan falls back to the next model when the first is deprecated", async () => {
+  const calls = [];
+  const env = mockEnv(async (modelId) => {
+    calls.push(modelId);
+    if (calls.length === 1) throw new Error("5028: @cf/meta/x was deprecated on 2026-05-30");
+    return { response: JSON.stringify({ scenes: [{ title: "A", description: "B", prompt: "C", coverIdea: "D" }] }) };
+  });
+  const res = await postJson(env, "/api/plan", { theme: "x", count: 1 });
+  assert.equal(res.status, 200);
+  const data = await res.json();
+  assert.equal(data.scenes.length, 1);
+  assert.equal(calls.length, 2);
 });
 test("missing AI binding returns code no-ai-binding on plan and image", async () => {
   const env = { ASSETS: { fetch: async () => new Response("asset", { status: 200 }) } };

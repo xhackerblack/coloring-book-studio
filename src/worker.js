@@ -5,6 +5,7 @@
 import {
   MODELS,
   PLAN_MODEL,
+  PLAN_MODELS,
   PLAN_NEURONS_APPROX,
   FREE_NEURONS_PER_DAY,
   getModel,
@@ -153,12 +154,34 @@ async function handlePlan(request, env) {
   const count = Math.max(1, Math.min(30, parseInt(body.count, 10) || 10));
   const allowText = Boolean(body.allowText);
   try {
-    const result = await env.AI.run(PLAN_MODEL, {
-      messages: buildPlanMessages({ theme, audience, count, allowText }),
-      max_tokens: 3000,
-    });
-    throwIfErrorResult(result);
-    const text = typeof result?.response === "string" ? result.response : "";
+    // Try the plan models in order — Cloudflare retires LLM versions, so a
+    // deprecated model falls through to the next one instead of failing.
+    let text = "";
+    let lastErr = null;
+    for (const modelId of PLAN_MODELS) {
+      try {
+        const result = await env.AI.run(modelId, {
+          messages: buildPlanMessages({ theme, audience, count, allowText }),
+          max_tokens: 3000,
+        });
+        throwIfErrorResult(result);
+        const candidate = typeof result?.response === "string" ? result.response : "";
+        if (candidate.trim()) {
+          text = candidate;
+          lastErr = null;
+          break;
+        }
+        lastErr = new Error("empty response from " + modelId);
+      } catch (err) {
+        if (isQuotaError(err)) {
+          return json({ code: "quota", message: "Daily free quota reached. Try again after 00:00 UTC." }, 429);
+        }
+        lastErr = err;
+      }
+    }
+    if (lastErr) {
+      return json({ code: "upstream", message: "Planning service failed.", detail: errDetail(lastErr) }, 502);
+    }
     return json(parsePlan(text, count, theme));
   } catch (err) {
     if (isQuotaError(err)) {

@@ -17,10 +17,14 @@
 //   input tiles = 0 (no input image).
 // - phoenix-1.0: tiles*530 + steps*10, steps = 25.
 // - lucid-origin: tiles*636 + steps*12, steps = 25.
-// - llama-3.1-8b-instruct (plan calls): 25,608 neurons per M input tokens,
-//   75,147 per M output tokens. A plan call is estimated at ~1,600 input
-//   + ~1,600 output tokens (~161 neurons), so planning is cheap next to
-//   image generation. If Cloudflare changes prices, update the numbers
+// - llama-3.1-8b-instruct-fp8-fast (plan calls): 4,119 neurons per M input
+//   tokens, 34,868 per M output tokens. A plan call is estimated at ~1,600
+//   input + ~1,600 output tokens (~62 neurons), so planning is cheap next
+//   to image generation. NOTE (2026-10-18): the plain
+//   @cf/meta/llama-3.1-8b-instruct was deprecated by Cloudflare on
+//   2026-05-30, so the planner uses the fp8-fast variant, with
+//   llama-3.2-3b-instruct as automatic fallback.
+//   If Cloudflare changes prices, update the numbers
 //   below and /api/config + the README table pick them up automatically.
 
 export const FREE_NEURONS_PER_DAY = 10000;
@@ -29,13 +33,18 @@ export const IMAGE_HEIGHT = 1024;
 export const TILES = 4; // ceil(1024/512) * ceil(1024/512)
 export const MEGAPIXELS = 1;
 
-export const PLAN_MODEL = "@cf/meta/llama-3.1-8b-instruct";
+/** LLMs used for /api/plan (JSON scene planning). Order = try-first. */
+export const PLAN_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8-fast";
+export const PLAN_MODELS = [
+  "@cf/meta/llama-3.1-8b-instruct-fp8-fast",
+  "@cf/meta/llama-3.2-3b-instruct",
+];
 // Estimated tokens for one /api/plan call (system + user prompt + JSON plan).
 export const PLAN_INPUT_TOKENS_EST = 1600;
 export const PLAN_OUTPUT_TOKENS_EST = 1600;
 export const PLAN_NEURONS_APPROX = Math.round(
-  (PLAN_INPUT_TOKENS_EST / 1e6) * 25608 +
-    (PLAN_OUTPUT_TOKENS_EST / 1e6) * 75147,
+  (PLAN_INPUT_TOKENS_EST / 1e6) * 4119 +
+    (PLAN_OUTPUT_TOKENS_EST / 1e6) * 34868,
 );
 
 export const MODELS = [
