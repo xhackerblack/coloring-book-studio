@@ -93,6 +93,36 @@ async function checkPassword(request, env) {
   return timingSafeEqual(textEncoder.encode(given), textEncoder.encode(secret));
 }
 
+/**
+ * The Workers AI binding must exist. If the deployment lost it (e.g. the
+ * dashboard import did not apply wrangler.jsonc bindings), env.AI.run throws
+ * a TypeError that used to surface as a generic 502 — now it gets its own
+ * code so the UI can tell the user exactly what to fix.
+ */
+function aiBindingError(env) {
+  if (env && env.AI && typeof env.AI.run === "function") return null;
+  return json(
+    {
+      code: "no-ai-binding",
+      message: "Workers AI binding is not configured on this deployment.",
+      detail: "env.AI is missing — check the Worker's Bindings in the Cloudflare dashboard.",
+    },
+    502,
+  );
+}
+
+/** Truncated upstream message for the `detail` field (user's own app — safe to expose). */
+function errDetail(err) {
+  return String((err && (err.message || err.error)) || err || "unknown").slice(0, 300);
+}
+
+/** Some Workers AI failures arrive as a returned {error} value instead of a throw. */
+function throwIfErrorResult(result) {
+  if (result && result.error) {
+    throw new Error(typeof result.error === "string" ? result.error : JSON.stringify(result.error));
+  }
+}
+
 async function handleConfig(env) {
   return json({
     models: publicModels(),
@@ -110,6 +140,8 @@ async function handlePlan(request, env) {
   if (!(await checkPassword(request, env))) {
     return json({ code: "unauthorized", message: "Missing or wrong app password." }, 401);
   }
+  const bindingErr = aiBindingError(env);
+  if (bindingErr) return bindingErr;
   let body = {};
   try {
     body = await request.json();
@@ -125,13 +157,14 @@ async function handlePlan(request, env) {
       messages: buildPlanMessages({ theme, audience, count, allowText }),
       max_tokens: 3000,
     });
+    throwIfErrorResult(result);
     const text = typeof result?.response === "string" ? result.response : "";
     return json(parsePlan(text, count, theme));
   } catch (err) {
     if (isQuotaError(err)) {
       return json({ code: "quota", message: "Daily free quota reached. Try again after 00:00 UTC." }, 429);
     }
-    return json({ code: "upstream", message: "Planning service failed." }, 502);
+    return json({ code: "upstream", message: "Planning service failed.", detail: errDetail(err) }, 502);
   }
 }
 
@@ -139,6 +172,8 @@ async function handleImage(request, env) {
   if (!(await checkPassword(request, env))) {
     return json({ code: "unauthorized", message: "Missing or wrong app password." }, 401);
   }
+  const bindingErr = aiBindingError(env);
+  if (bindingErr) return bindingErr;
   let body = {};
   try {
     body = await request.json();
@@ -188,12 +223,12 @@ async function handleImage(request, env) {
     if (isQuotaError(err)) {
       return json({ code: "quota", message: "Daily free quota reached. Try again after 00:00 UTC." }, 429);
     }
-    return json({ code: "upstream", message: "Image generation failed." }, 502);
+    return json({ code: "upstream", message: "Image generation failed.", detail: errDetail(err) }, 502);
   }
 
   const bytes = extractImageBytes(result);
   if (!bytes || bytes.length === 0) {
-    return json({ code: "upstream", message: "Model returned no image." }, 502);
+    return json({ code: "upstream", message: "Model returned no image.", detail: errDetail(result && result.error) }, 502);
   }
   return new Response(bytes, {
     status: 200,

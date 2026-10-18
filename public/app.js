@@ -14,6 +14,7 @@ const STATUS_AR = { queued: "في الانتظار", working: "جارٍ التو
 const ERR_AR = {
   quota: "وصلتَ إلى حدّ الحصة المجانية اليوم (١٠٬٠٠٠ خلية عصبية). ستُصفَّر الحصة عند ٠٠:٠٠ UTC. يمكنك استئناف الصفحات المتبقية لاحقاً.",
   upstream: "تعذّرت خدمة التوليد. حاوِل مجدداً بعد قليل.",
+  "no-ai-binding": "ربط Workers AI غير مفعّل في هذا النشر. في لوحة Cloudflare افتح الـ Worker ← Settings ← Bindings وتأكد من وجود AI binding بالاسم AI، ثم أعد النشر.",
   network: "تعذّر الاتصال بالخادم. تحقّق من اتصالك ثم حاوِل مجدداً.",
   unauthorized: "كلمة المرور غير صحيحة.",
   noimage: "لم يُعِد النموذج أي صورة. حاوِل مجدداً.",
@@ -175,6 +176,7 @@ async function apiJson(path, body, { retry = true } = {}) {
       const err = new Error(data.code || `HTTP ${res.status}`);
       err.code = data.code || `http${res.status}`;
       err.status = res.status;
+      err.detail = typeof data.detail === "string" ? data.detail : "";
       throw err;
     } catch (e) {
       const retriable = e.code === undefined || e.status >= 500;
@@ -201,6 +203,7 @@ async function apiImage(body) {
       const err = new Error(data.code || `HTTP ${res.status}`);
       err.code = data.code || `http${res.status}`;
       err.status = res.status;
+      err.detail = typeof data.detail === "string" ? data.detail : "";
       throw err;
     } catch (e) {
       const retriable = e.code === undefined || e.status >= 500;
@@ -225,7 +228,8 @@ function showSheets() {
 function setError(el, err) {
   if (!err) { el.hidden = true; el.textContent = ""; return; }
   el.hidden = false;
-  el.textContent = ERR_AR[err.code] || ERR_AR.network;
+  const base = ERR_AR[err.code] || ERR_AR.network;
+  el.textContent = err.detail ? `${base} (التفاصيل: ${err.detail})` : base;
 }
 
 // ---------- UI: plan ----------

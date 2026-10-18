@@ -140,11 +140,30 @@ test("quota detection also matches message text without a code", () => {
   assert.equal(isQuotaError(new Error("boom")), false);
   assert.equal(isQuotaError({ code: 4006, message: "x" }), true);
 });
-test("other upstream failures map to 502", async () => {
+test("other upstream failures map to 502 with a detail message", async () => {
   const env = mockEnv(async () => { throw new Error("model exploded"); });
   const res = await postJson(env, "/api/image", { kind: "page", scene: "x" });
   assert.equal(res.status, 502);
-  assert.equal((await res.json()).code, "upstream");
+  const data = await res.json();
+  assert.equal(data.code, "upstream");
+  assert.match(data.detail, /model exploded/);
+});
+test("missing AI binding returns code no-ai-binding on plan and image", async () => {
+  const env = { ASSETS: { fetch: async () => new Response("asset", { status: 200 }) } };
+  const planRes = await postJson(env, "/api/plan", { theme: "x", count: 2 });
+  assert.equal(planRes.status, 502);
+  assert.equal((await planRes.json()).code, "no-ai-binding");
+  const imgRes = await postJson(env, "/api/image", { kind: "page", scene: "x" });
+  assert.equal(imgRes.status, 502);
+  assert.equal((await imgRes.json()).code, "no-ai-binding");
+});
+test("a returned {error} value is surfaced as upstream with detail", async () => {
+  const env = mockEnv(async () => ({ error: "model not found" }));
+  const res = await postJson(env, "/api/plan", { theme: "x", count: 2 });
+  assert.equal(res.status, 502);
+  const data = await res.json();
+  assert.equal(data.code, "upstream");
+  assert.match(data.detail, /model not found/);
 });
 test("retry-once with prompt-only input when a model rejects optional params", async () => {
   let calls = 0;
